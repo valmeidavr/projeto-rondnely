@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Clientes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input, textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.delete {
+            background-color: #dc3545;
+        }
+        button.delete:hover {
+            background-color: #c82333;
+        }
+        button.edit {
+            background-color: #28a745;
+        }
+        button.edit:hover {
+            background-color: #218838;
+        }
+        .cliente-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #fafafa;
+        }
+        .actions {
+            margin-top: 10px;
+        }
+        .actions button {
+            margin-right: 10px;
+        }
+        .error {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .success {
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerenciamento de Clientes</h1>
+        
+        <h2>Adicionar/Editar Cliente</h2>
+        <form id="clienteForm">
+            <input type="hidden" id="clienteId">
+            <input type="text" id="nome" placeholder="Nome" required>
+            <textarea id="endereco" placeholder="Endereço" rows="3"></textarea>
+            <input type="tel" id="telefone" placeholder="Telefone">
+            <textarea id="descricao" placeholder="Descrição" rows="4"></textarea>
+            <button type="submit" id="submitBtn">Adicionar Cliente</button>
+            <button type="button" id="cancelBtn" style="display: none;">Cancelar</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <div class="container">
+        <h2>Lista de Clientes</h2>
+        <button onclick="carregarClientes()">Atualizar Lista</button>
+        <div id="clientesList"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/clientes';
+
+        function carregarClientes() {
+            fetch(API_URL)
+                .then(response => response.json())
+                .then(clientes => {
+                    const clientesList = document.getElementById('clientesList');
+                    clientesList.innerHTML = '';
+                    
+                    clientes.forEach(cliente => {
+                        const clienteDiv = document.createElement('div');
+                        clienteDiv.className = 'cliente-item';
+                        clienteDiv.innerHTML = `
+                            <h3>${cliente.nome}</h3>
+                            <p><strong>Endereço:</strong> ${cliente.endereco || 'Não informado'}</p>
+                            <p><strong>Telefone:</strong> ${cliente.telefone || 'Não informado'}</p>
+                            <p><strong>Descrição:</strong> ${cliente.descricao || 'Não informado'}</p>
+                            <p><strong>ID:</strong> ${cliente.id}</p>
+                            <div class="actions">
+                                <button class="edit" onclick="editarCliente(${cliente.id})">Editar</button>
+                                <button class="delete" onclick="deletarCliente(${cliente.id})">Deletar</button>
+                            </div>
+                        `;
+                        clientesList.appendChild(clienteDiv);
+                    });
+                })
+                .catch(error => {
+                    showMessage('Erro ao carregar clientes: ' + error.message, 'error');
+                });
+        }
+
+        function criarCliente(clienteData) {
+            return fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(clienteData)
+            }).then(response => response.json());
+        }
+
+        function atualizarCliente(id, clienteData) {
+            return fetch(`${API_URL}/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(clienteData)
+            }).then(response => response.json());
+        }
+
+        function buscarClientePorId(id) {
+            return fetch(`${API_URL}/${id}`)
+                .then(response => response.json());
+        }
+
+        function deletarCliente(id) {
+            if (confirm('Tem certeza que deseja deletar este cliente?')) {
+                fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(() => {
+                    showMessage('Cliente deletado com sucesso!', 'success');
+                    carregarClientes();
+                })
+                .catch(error => {
+                    showMessage('Erro ao deletar cliente: ' + error.message, 'error');
+                });
+            }
+        }
+
+        function editarCliente(id) {
+            buscarClientePorId(id)
+                .then(cliente => {
+                    document.getElementById('clienteId').value = cliente.id;
+                    document.getElementById('nome').value = cliente.nome;
+                    document.getElementById('endereco').value = cliente.endereco || '';
+                    document.getElementById('telefone').value = cliente.telefone || '';
+                    document.getElementById('descricao').value = cliente.descricao || '';
+                    
+                    document.getElementById('submitBtn').textContent = 'Atualizar Cliente';
+                    document.getElementById('cancelBtn').style.display = 'inline-block';
+                    
+                    document.getElementById('nome').focus();
+                })
+                .catch(error => {
+                    showMessage('Erro ao carregar dados do cliente: ' + error.message, 'error');
+                });
+        }
+
+        function cancelarEdicao() {
+            document.getElementById('clienteForm').reset();
+            document.getElementById('clienteId').value = '';
+            document.getElementById('submitBtn').textContent = 'Adicionar Cliente';
+            document.getElementById('cancelBtn').style.display = 'none';
+            clearMessage();
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = type;
+        }
+
+        function clearMessage() {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = '';
+            messageDiv.className = '';
+        }
+
+        document.getElementById('clienteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const clienteData = {
+                nome: document.getElementById('nome').value,
+                endereco: document.getElementById('endereco').value,
+                telefone: document.getElementById('telefone').value,
+                descricao: document.getElementById('descricao').value
+            };
+            
+            const clienteId = document.getElementById('clienteId').value;
+            
+            if (clienteId) {
+                atualizarCliente(clienteId, clienteData)
+                    .then(() => {
+                        showMessage('Cliente atualizado com sucesso!', 'success');
+                        document.getElementById('clienteForm').reset();
+                        cancelarEdicao();
+                        carregarClientes();
+                    })
+                    .catch(error => {
+                        showMessage('Erro ao atualizar cliente: ' + error.message, 'error');
+                    });
+            } else {
+                criarCliente(clienteData)
+                    .then(() => {
+                        showMessage('Cliente criado com sucesso!', 'success');
+                        document.getElementById('clienteForm').reset();
+                        cancelarEdicao();
+                        carregarClientes();
+                    })
+                    .catch(error => {
+                        showMessage('Erro ao criar cliente: ' + error.message, 'error');
+                    });
+            }
+        });
+
+        document.getElementById('cancelBtn').addEventListener('click', cancelarEdicao);
+
+        carregarClientes();
+    </script>
+</body>
+</html>
